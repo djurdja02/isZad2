@@ -24,26 +24,40 @@ class ExampleAgent(Agent):
         return columns[random.randint(0, len(columns) - 1)]
 
 class Negascout(Agent):
-    def node_evaluation(self,state,player):
-        Acheck = state.get_checkers(0)
-        Bcheck = state.get_checkers(1)
-        Awin = sum(1 for i in state.win_masks if (Acheck & i)==i)
-        Bwin = sum(1 for i in state.win_masks if (Bcheck & i)==i)
-
-        # vecim vrednostima je potrebno nagraditi pobede ostvarene manjim brojem zetona
-        evaluation = Awin-Bwin
-        if evaluation > 0:
-            evaluation = evaluation+evaluation * 5.6 / bin(Acheck).count('1')
-        else:
-            evaluation = evaluation-evaluation * 5.6 / bin(Acheck).count('1')
+    def node_evaluation(self, state, player):
+        if bin(state.get_checkers(0)).count('1') < 3:
+            return 0
+        Awins = 0
+        Bwins = 0
+        next_moves = state.get_possible_columns()
+        for i in next_moves:
+            curr = state.generate_successor_state(i)
+            if curr.get_checkers(0) in curr.get_all_win_states():
+                Awins +=1
+            if curr.get_checkers(1) in curr.get_all_win_states():
+                Bwins +=1
+        cnt = bin(curr.get_checkers(0)).count('1')
+        evaluation = (Awins - Bwins) * (1./cnt)
         return evaluation
 
+
+
+
     def negascout(self, alpha, beta, max_depth, state, player):
-        if max_depth == 0 or state.get_state_status() is not None:
-            mul = 1
-            if player == 1:
-                mul = -1
+        mul = 1
+        RED = 0
+        YEL = 1
+        DRAW = 2
+        if player == 1:
+            mul = -1
+        if max_depth == 0 and state.get_state_status() is None:
             return (self.node_evaluation(state, player)) * mul, 0
+        elif state.get_state_status() == RED:
+            return 1000*mul, 0
+        elif state.get_state_status() == YEL:
+            return -1000*mul, 0
+        elif state.get_state_status() == DRAW:
+            return 0, 0
         columns_order = [3, 2, 4, 1, 5, 0, 6]
         score = float('-inf')
         column_ret = None
@@ -53,19 +67,19 @@ class Negascout(Agent):
             succ = state.generate_successor_state(column)
             if i == 0:
                 val, _ = self.negascout(-beta, -alpha, max_depth-1, succ, 1-player)
-                val *= -1
+                val *= (-1)
                 i += 1
             else:
                 val, _ = self.negascout(-alpha - 1, -alpha, max_depth-1, succ, 1-player)
                 val *= -1
                 if alpha < val < beta:
                     val, _ = self.negascout(-beta, -alpha, max_depth-1, succ, 1-player)
-                    val *= -1
+                    val *= (-1)
             if val > score:
                 score = val
                 column_ret = column
             alpha = max(score, val)
-            if val == score:
+            if val == score and column_ret is not None:
                 if columns_order.index(column_ret) > columns_order.index(column):
                     score = val
                     column_ret = column
@@ -82,24 +96,34 @@ class Negascout(Agent):
 
 class MinimaxABAgent(Agent):
 
-    def node_evaluation(self, state, player):
-        Acheck = state.get_checkers(0)
-        Bcheck = state.get_checkers(1)
-        Awin= sum(1 for i in state.win_masks if (Acheck & i) == i)
-        Bwin= sum(1 for i in state.win_masks if (Bcheck & i) == i)
-
-
-        #vecim vrednostima je potrebno nagraditi pobede ostvarene manjim brojem zetona
-        evaluation = Awin - Bwin
-        if evaluation > 0:
-            evaluation = evaluation + evaluation*5.6/bin(Acheck).count('1')
-        else:
-            evaluation = evaluation - evaluation*5.6/bin(Acheck).count('1')
+    def node_evaluation(self,state,player):
+        if bin(state.get_checkers(0)).count('1') < 3:
+            return 0
+        Awins = 0
+        Bwins = 0
+        next_moves = state.get_possible_columns()
+        for i in next_moves:
+            curr = state.generate_successor_state(i)
+            if curr.get_checkers(0) in curr.get_all_win_states():
+                Awins += 1
+            if curr.get_checkers(1) in curr.get_all_win_states():
+                Bwins += 1
+        cnt = bin(curr.get_checkers(0)).count('1')
+        evaluation = (Awins-Bwins) * (1. / cnt)
         return evaluation
 
     def minimax(self, alpha, beta, max_depth, state, player):
-        if max_depth == 0 or state.get_state_status() is not None:
+        RED = 0
+        YEL = 1
+        DRAW = 2
+        if max_depth == 0 and state.get_state_status() is None:
             return self.node_evaluation(state, player), 0
+        elif state.get_state_status() == RED:
+            return 1000, 0
+        elif state.get_state_status() == YEL:
+            return -1000, 0
+        elif state.get_state_status() == DRAW:
+            return 0, 0
         columns_order = [3, 2, 4, 1, 5, 0, 6]
         if player == 0:
             score = float('-inf')
@@ -107,7 +131,7 @@ class MinimaxABAgent(Agent):
             for column in state.get_possible_columns():
                 succ = state.generate_successor_state(column)
                 tmp, _ = self.minimax(alpha, beta, max_depth-1, succ, 1)
-                if tmp == score:
+                if tmp == score and column_ret is not None:
                     if columns_order.index(column_ret) > columns_order.index(column):
                         score = tmp
                         column_ret = column
