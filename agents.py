@@ -1,6 +1,8 @@
 import random
 import time
 
+import config
+
 
 class Agent:
     ident = 0
@@ -24,25 +26,51 @@ class ExampleAgent(Agent):
         return columns[random.randint(0, len(columns) - 1)]
 
 class Negascout(Agent):
-    def node_evaluation(self, state, player):
-        if bin(state.get_checkers(0)).count('1') < 3:
+
+    possible_wins =[]
+    def check_score(self, win, Amarks, Bmarks):
+        checked = 0
+        for index in range(4):
+            if Bmarks & (1 << win[index]) != 0: return 0
+            if Amarks & (1 << win[index]) != 0: checked +=1
+        if checked == 3:
+            return 1
+        else:
             return 0
-        Awins = 0
-        Bwins = 0
-        next_moves = state.get_possible_columns()
-        for i in next_moves:
-            curr = state.generate_successor_state(i)
-            if curr.get_checkers(0) in curr.get_all_win_states():
-                Awins +=1
-            if curr.get_checkers(1) in curr.get_all_win_states():
-                Bwins +=1
-        cnt = bin(curr.get_checkers(0)).count('1')
-        evaluation = (Awins - Bwins) * (1./cnt)
-        return evaluation
-
-
-
-
+    def node_evaluation(self,state,player):
+        evaal = 0
+        Amarks = state.get_checkers(0)
+        Bmarks = state.get_checkers(1)
+        if len(self.possible_wins)==0:
+            for i in range(config.M):
+                for j in range(config.N):
+                    # 1 po visini
+                    if i+4 <= config.M:
+                        newln=[]
+                        for cnt in range(4):
+                            newln.append((j * config.M)+(i+cnt))
+                        self.possible_wins.append(newln)
+                    # 2 po sirini
+                    if j+4 <= config.N:
+                        newln =[]
+                        for cnt in range(4):
+                            newln.append(i+(j+cnt) * config.M);
+                        self.possible_wins.append(newln)
+                    # po dijagonali prvoj
+                    if i+4 <= config.M and j+4 <= config.N:
+                        newln =[]
+                        for cnt in range(4):
+                            newln.append((i+cnt)+(j+cnt) * config.M)
+                        self.possible_wins.append(newln)
+                    # po dijagonali drugoj
+                    if i-3 >= 0 and j-3 >= 0:
+                        newln =[]
+                        for cnt in range(4):
+                            newln.append((i-cnt)+(j-cnt) * config.M)
+                        self.possible_wins.append(newln)
+        for win in self.possible_wins:
+            evaal += self.check_score(win,Amarks,Bmarks)
+        return evaal
     def negascout(self, alpha, beta, max_depth, state, player):
         mul = 1
         RED = 0
@@ -95,22 +123,52 @@ class Negascout(Agent):
 
 
 class MinimaxABAgent(Agent):
+    possible_wins = []
+
+    def check_score(self,win,Amarks,Bmarks):
+        checked = 0
+        for index in range(4):
+            if Bmarks & (1 << win[index])!=0: return 0
+            if Amarks & (1 << win[index])!=0: checked += 1
+        if checked==3:
+            return 1
+        else:
+            return 0
 
     def node_evaluation(self,state,player):
-        if bin(state.get_checkers(0)).count('1') < 3:
-            return 0
-        Awins = 0
-        Bwins = 0
-        next_moves = state.get_possible_columns()
-        for i in next_moves:
-            curr = state.generate_successor_state(i)
-            if curr.get_checkers(0) in curr.get_all_win_states():
-                Awins += 1
-            if curr.get_checkers(1) in curr.get_all_win_states():
-                Bwins += 1
-        cnt = bin(curr.get_checkers(0)).count('1')
-        evaluation = (Awins-Bwins) * (1. / cnt)
-        return evaluation
+        evaal = 0
+        Amarks = state.get_checkers(0)
+        Bmarks = state.get_checkers(1)
+        if len(self.possible_wins)==0:
+            for i in range(config.M):
+                for j in range(config.N):
+                    # 1 po visini
+                    if i+4 <= config.M:
+                        newln = []
+                        for cnt in range(4):
+                            newln.append((j * config.M)+(i+cnt))
+                        self.possible_wins.append(newln)
+                    # 2 po sirini
+                    if j+4 <= config.N:
+                        newln = []
+                        for cnt in range(4):
+                            newln.append(i+(j+cnt) * config.M);
+                        self.possible_wins.append(newln)
+                    # po dijagonali prvoj
+                    if i+4 <= config.M and j+4 <= config.N:
+                        newln = []
+                        for cnt in range(4):
+                            newln.append((i+cnt)+(j+cnt) * config.M)
+                        self.possible_wins.append(newln)
+                    # po dijagonali drugoj
+                    if i-3 >= 0 and j-3 >= 0:
+                        newln = []
+                        for cnt in range(4):
+                            newln.append((i-cnt)+(j-cnt) * config.M)
+                        self.possible_wins.append(newln)
+        for win in self.possible_wins:
+            evaal += self.check_score(win,Amarks,Bmarks)
+        return evaal
 
     def minimax(self, alpha, beta, max_depth, state, player):
         RED = 0
